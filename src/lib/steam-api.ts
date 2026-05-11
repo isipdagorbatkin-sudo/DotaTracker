@@ -158,11 +158,62 @@ export async function getMatchDetails(matchId: number): Promise<SteamMatch | nul
   try {
     const res = await fetch(
       `${STEAM_BASE}/IDOTA2Match_570/GetMatchDetails/v1/?key=${getKey()}&match_id=${matchId}`,
-      { next: { revalidate: 300 } },
+      { signal: AbortSignal.timeout(5000), next: { revalidate: 300 } },
     )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.result || null
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.result) return data.result
+    }
+  } catch {
+    // Steam API failed, try OpenDota below
+  }
+
+  try {
+    const odRes = await fetch(
+      `https://api.opendota.com/api/matches/${matchId}`,
+      { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } },
+    )
+    if (!odRes.ok) return null
+    const odData = await odRes.json()
+    if (!odData?.players) return null
+    return {
+      match_id: odData.match_id,
+      match_seq_num: odData.match_seq_num || 0,
+      start_time: odData.start_time,
+      lobby_type: odData.lobby_type,
+      game_mode: odData.game_mode,
+      radiant_win: odData.radiant_win,
+      duration: odData.duration,
+      players: odData.players.map((p: any) => ({
+        account_id: p.account_id || 0,
+        player_slot: p.player_slot,
+        hero_id: p.hero_id,
+        kills: p.kills || 0,
+        deaths: p.deaths || 0,
+        assists: p.assists || 0,
+        leaver_status: p.leaver_status || 0,
+        last_hits: p.last_hits || 0,
+        denies: p.denies || 0,
+        gold_per_min: p.gold_per_min || 0,
+        xp_per_min: p.xp_per_min || 0,
+        level: p.level || 0,
+        hero_damage: p.hero_damage || 0,
+        tower_damage: p.tower_damage || 0,
+        hero_healing: p.hero_healing || 0,
+        gold: p.gold || 0,
+        gold_spent: p.gold_spent || 0,
+        rank_tier: p.rank_tier,
+        item_0: p.item_0,
+        item_1: p.item_1,
+        item_2: p.item_2,
+        item_3: p.item_3,
+        item_4: p.item_4,
+        item_5: p.item_5,
+        backpack_0: p.backpack_0,
+        backpack_1: p.backpack_1,
+        backpack_2: p.backpack_2,
+      })),
+    }
   } catch {
     return null
   }
