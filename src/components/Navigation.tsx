@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import {
@@ -90,10 +90,10 @@ export function Navigation() {
                   </button>
                 </div>
               ) : (
-                <button onClick={() => signIn("steam")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
+                <a href="/api/auth/steam" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
                   <img src="https://steamcommunity.com/favicon.ico" alt="" className="h-4 w-4" />
                   Sign in via Steam
-                </button>
+                </a>
               )}
 
               <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-2 text-white/60 hover:text-white">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSession, signIn } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -65,9 +65,11 @@ export default function FunStatsPage() {
             <div className="h-8 w-1 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full mx-auto mb-3" />
             <h1 className="text-3xl font-bold text-white mb-2">Fun Stats</h1>
             <p className="text-white/50 mb-8">Sign in with Steam to see your match statistics</p>
-            <Button variant="premium" size="lg" onClick={() => signIn("steam")}>
-              <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
-            </Button>
+            <a href="/api/auth/steam">
+              <Button variant="premium" size="lg">
+                <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
+              </Button>
+            </a>
           </motion.div>
         </div>
       </div>

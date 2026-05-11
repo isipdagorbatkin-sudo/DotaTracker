@@ -1,6 +1,6 @@
 "use client"
 
-import { useSession, signIn } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -65,9 +65,11 @@ export default function DashboardPage() {
                     <h2 className="text-lg font-semibold text-white mb-1">Unlock Your Stats</h2>
                     <p className="text-sm text-white/50">Sign in with Steam to view your match stats, MMR history, and more</p>
                   </div>
-                  <Button variant="premium" size="lg" onClick={() => signIn("steam")}>
-                    <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
-                  </Button>
+                  <a href="/api/auth/steam">
+                    <Button variant="premium" size="lg">
+                      <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
+                    </Button>
+                  </a>
                 </div>
               </CardContent>
             </Card>
