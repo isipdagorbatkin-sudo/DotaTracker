@@ -9,12 +9,7 @@ export async function GET() {
 
   try {
     const steamId = session.user.steamId
-
-    const ac = new AbortController()
-    const timeout = setTimeout(() => ac.abort(), 15000)
-
-    const res = await fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`, { signal: ac.signal })
-    clearTimeout(timeout)
+    const res = await fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`)
     const matches = await res.json()
 
     const daily: Record<string, { games: number; wins: number; mmrChange: number }> = {}
@@ -65,7 +60,7 @@ export async function GET() {
       chartData,
       recentChanges: history.slice(-20).reverse(),
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch MMR history" }, { status: 500 })
   }
 }

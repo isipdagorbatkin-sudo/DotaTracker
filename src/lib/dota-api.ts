@@ -61,10 +61,7 @@ export async function fetchHeroes(): Promise<DotaHero[]> {
 }
 
 export async function fetchHeroStats(): Promise<any[]> {
-  const ac = new AbortController()
-  const timeout = setTimeout(() => ac.abort(), 20000)
-  const res = await fetch(`${OPEN_DOTA_BASE}/heroStats`, { signal: ac.signal })
-  clearTimeout(timeout)
+  const res = await fetch(`${OPEN_DOTA_BASE}/heroStats`)
   if (!res.ok) throw new Error("Failed to fetch hero stats")
   return res.json()
 }

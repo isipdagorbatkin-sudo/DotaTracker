@@ -10,15 +10,10 @@ export async function GET() {
   try {
     const steamId = session.user.steamId
 
-    const ac = new AbortController()
-    const timeout = setTimeout(() => ac.abort(), 15000)
-
     const [matchesRes, heroesRes] = await Promise.all([
-      fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`, { signal: ac.signal }),
-      fetch(`https://api.opendota.com/api/players/${steamId}/heroes`, { signal: ac.signal }),
+      fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`),
+      fetch(`https://api.opendota.com/api/players/${steamId}/heroes`),
     ])
-
-    clearTimeout(timeout)
 
     const matches = await matchesRes.json()
     const heroStats = await heroesRes.json()
@@ -70,7 +65,7 @@ export async function GET() {
     const heroStatsSorted = (heroStats || []).sort((a: any, b: any) => b.games - a.games)
     const mostPlayed = heroStatsSorted[0] || null
     const bestWinrate = heroStatsSorted.filter((h: any) => h.games >= 5).sort((a: any, b: any) => (b.win / b.games) - (a.win / a.games))[0] || null
-    const worstWinrate = heroStatsSorted.filter((h: any) => h.games >= 5).sort((a: any, b: any) => (a.win / a.games) - (b.win / b.games))[0] || null
+    const worstWinrate = heroStatsSorted.filter((h: any) => h.games >= 5).sort((a: any, b: any) => (a.win / b.games) - (b.win / b.games))[0] || null
 
     return NextResponse.json({
       longestGame,
@@ -87,7 +82,7 @@ export async function GET() {
       bestWinrate,
       worstWinrate,
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch fun stats" }, { status: 500 })
   }
 }

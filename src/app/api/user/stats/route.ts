@@ -9,24 +9,16 @@ export async function GET() {
 
   try {
     const steamId = session.user.steamId
-
-    const ac = new AbortController()
-    const timeout = setTimeout(() => ac.abort(), 15000)
+    const dataRes = await fetch(`https://api.opendota.com/api/players/${steamId}`)
+    const data = await dataRes.json()
 
     const [wlRes, recentRes] = await Promise.all([
-      fetch(`https://api.opendota.com/api/players/${steamId}/wl`, { signal: ac.signal }),
-      fetch(`https://api.opendota.com/api/players/${steamId}/recentMatches`, { signal: ac.signal }),
+      fetch(`https://api.opendota.com/api/players/${steamId}/wl`),
+      fetch(`https://api.opendota.com/api/players/${steamId}/recentMatches`),
     ])
-    clearTimeout(timeout)
 
     const winLoss = await wlRes.json()
     const recentMatches = await recentRes.json()
-
-    const playerAc = new AbortController()
-    const playerTimeout = setTimeout(() => playerAc.abort(), 10000)
-    const playerResp = await fetch(`https://api.opendota.com/api/players/${steamId}`, { signal: playerAc.signal })
-    clearTimeout(playerTimeout)
-    const data = await playerResp.json()
 
     return NextResponse.json({
       profile: data.profile || {},
