@@ -1,12 +1,12 @@
 "use client"
 
+import { useSession, signIn } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Dice1 as Dice, Target, Sword, CircleDot, TrendingUp, Users, Sparkles, ArrowRight, Search } from "lucide-react"
-import { useState } from "react"
+import { Dice1 as Dice, Target, Sword, CircleDot, TrendingUp, Users, Sparkles, ArrowRight, LogIn } from "lucide-react"
 
 const quickActions = [
   { href: "/randomizer", label: "Randomize Hero", icon: Dice, color: "from-purple-500 to-pink-500", desc: "Get a random hero with build" },
@@ -18,17 +18,10 @@ const quickActions = [
 const userFeatures = [
   { href: "/profile", label: "Profile", icon: Users, desc: "Your match stats and top heroes", color: "from-purple-500/10 to-cyan-500/5" },
   { href: "/mmr-tracker", label: "MMR Tracker", icon: TrendingUp, desc: "Rank progression chart", color: "from-emerald-500/10 to-teal-500/5" },
-  { href: "/fun-stats", label: "Fun Stats", icon: Sparkles, desc: "KDA records, streaks, and more", color: "from-violet-500/10 to-purple-500/5" },
 ]
 
 export default function DashboardPage() {
-  const [steamId, setSteamId] = useState("")
-
-  const handleSearch = () => {
-    if (!steamId.trim()) return
-    const id = steamId.trim()
-    window.open(`/profile?steamId=${encodeURIComponent(id)}`, "_blank")
-  }
+  const { data: session, status } = useSession()
 
   return (
     <div className="relative min-h-screen">
@@ -49,51 +42,64 @@ export default function DashboardPage() {
             </Badge>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            Welcome to Dota2Tracker
+            {status === "authenticated" ? `Welcome back, ${session.user?.name}` : "Welcome to Dota2Tracker"}
           </h1>
           <p className="text-white/50 text-lg">
-            Your personal Dota 2 command center
+            {status === "authenticated"
+              ? "Your personal Dota 2 command center"
+              : "Sign in with Steam to unlock personalized features"}
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-10"
-        >
-          <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-cyan-500/5">
-            <CardContent className="p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex-1 text-center sm:text-left">
-                  <h2 className="text-lg font-semibold text-white mb-1">Look Up a Player</h2>
-                  <p className="text-sm text-white/50">Enter a Steam ID or custom URL to view stats, MMR history, and more</p>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <input
-                    value={steamId}
-                    onChange={e => setSteamId(e.target.value)}
-                    placeholder="Steam ID or custom URL"
-                    className="flex-1 sm:w-64 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-purple-500/50"
-                    onKeyDown={e => e.key === "Enter" && handleSearch()}
-                  />
-                  <Button variant="premium" onClick={handleSearch}>
-                    <Search className="h-4 w-4" />
+        {status === "unauthenticated" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-10"
+          >
+            <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-cyan-500/5">
+              <CardContent className="p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex-1 text-center sm:text-left">
+                    <h2 className="text-lg font-semibold text-white mb-1">Unlock Your Stats</h2>
+                    <p className="text-sm text-white/50">Sign in with Steam to view your match stats, MMR history, and more</p>
+                  </div>
+                  <Button variant="premium" size="lg" onClick={() => signIn("steam")}>
+                    <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
                   </Button>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
-                {userFeatures.map(f => (
-                  <Link key={f.href} href={f.href}>
-                    <Button variant="outline" size="sm" className="text-xs">
-                      {f.label}
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {status === "authenticated" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-10"
+          >
+            <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-teal-500/5">
+              <CardContent className="p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex-1 text-center sm:text-left">
+                    <h2 className="text-lg font-semibold text-white mb-1">Your Data</h2>
+                    <p className="text-sm text-white/50">View your personal match statistics and rank progression</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {userFeatures.map(f => (
+                      <Link key={f.href} href={f.href}>
+                        <Button variant="outline" size="sm">{f.label}</Button>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           {quickActions.map((action, i) => {
@@ -138,7 +144,6 @@ export default function DashboardPage() {
               { href: "/punishment-wheel", label: "Punishment Wheel", icon: CircleDot, desc: "Cursed item builds generator", color: "from-pink-500/20 to-rose-500/10" },
               { href: "/profile", label: "Profile", icon: Users, desc: "Your match stats and top heroes", color: "from-purple-500/20 to-cyan-500/10" },
               { href: "/mmr-tracker", label: "MMR Tracker", icon: TrendingUp, desc: "Rank progression chart", color: "from-emerald-500/20 to-teal-500/10" },
-              { href: "/fun-stats", label: "Fun Stats", icon: Sparkles, desc: "KDA records, streaks, and more", color: "from-violet-500/20 to-purple-500/10" },
             ].map((item, i) => {
               const Icon = item.icon
               return (

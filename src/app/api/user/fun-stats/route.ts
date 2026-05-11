@@ -1,33 +1,19 @@
 import { NextResponse } from "next/server"
-import { getMatchHistory, getMatchDetails, getTeamPlayers, didPlayerWin, convertSteamIdToAccountId } from "@/lib/steam-api"
+import { auth } from "@/lib/auth"
+import { getMatchHistory, getMatchDetails, getTeamPlayers, convertSteamIdToAccountId } from "@/lib/steam-api"
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const steamId = searchParams.get("steamId")
+export async function GET() {
+  const session = await auth()
+  const steamId = session?.user?.steamId
 
   if (!steamId) {
-    return NextResponse.json({ error: "steamId required" }, { status: 400 })
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
   try {
     const historyItems = await getMatchHistory(steamId, 50)
     if (historyItems.length === 0) {
-      return NextResponse.json({
-        totalMatches: 0,
-        bestKda: null,
-        worstKda: null,
-        longestGame: null,
-        shortestGame: null,
-        mostKills: null,
-        mostDeaths: null,
-        totalKills: 0,
-        totalDeaths: 0,
-        totalAssists: 0,
-        avgKda: { k: 0, d: 0, a: 0 },
-        currentStreak: { type: "none", count: 0 },
-        bestWinStreak: 0,
-        bestLoseStreak: 0,
-      })
+      return NextResponse.json({ totalMatches: 0, bestKda: null, worstKda: null, longestGame: null, shortestGame: null, mostKills: null, mostDeaths: null, totalKills: 0, totalDeaths: 0, totalAssists: 0, avgKda: { k: 0, d: 0, a: 0 }, currentStreak: { type: "none", count: 0 }, bestWinStreak: 0, bestLoseStreak: 0 })
     }
 
     const accountId = convertSteamIdToAccountId(steamId)
@@ -48,21 +34,17 @@ export async function GET(request: Request) {
       if (!match) continue
       const playerData = getTeamPlayers(match.players, accountId)
       if (!playerData) continue
-
       const isRadiant = playerData.player_slot < 128
       const won = isRadiant ? match.radiant_win : !match.radiant_win
       results.push(won)
-
       const k = playerData.kills
       const d = playerData.deaths || 1
       const a = playerData.assists
       const kda = (k + a) / d
-
       totalKills += k
       totalDeaths += playerData.deaths
       totalAssists += a
       matchCount++
-
       if (kda > bestKda.kda) bestKda = { heroId: playerData.hero_id, k, d: playerData.deaths, a, kda, matchId: match.match_id }
       if (kda < worstKda.kda) worstKda = { heroId: playerData.hero_id, k, d: playerData.deaths, a, kda, matchId: match.match_id }
       if (k > mostKills.kills) mostKills = { heroId: playerData.hero_id, kills: k, matchId: match.match_id }
@@ -71,16 +53,14 @@ export async function GET(request: Request) {
       if (match.duration < shortestGame.duration) shortestGame = { duration: match.duration, heroId: playerData.hero_id, matchId: match.match_id, win: won }
     }
 
-    // Streaks
-    let currentStreak = 0
     let currentStreakType: "win" | "lose" = results[results.length - 1] ? "win" : "lose"
+    let currentStreak = 0
     for (let i = results.length - 1; i >= 0; i--) {
       if (results[i] === (currentStreakType === "win")) currentStreak++
       else break
     }
 
-    let bestWinStreak = 0, bestLoseStreak = 0
-    let streak = 1
+    let bestWinStreak = 0, bestLoseStreak = 0, streak = 1
     for (let i = 1; i < results.length; i++) {
       if (results[i] === results[i - 1]) streak++
       else { if (results[i - 1]) bestWinStreak = Math.max(bestWinStreak, streak); else bestLoseStreak = Math.max(bestLoseStreak, streak); streak = 1 }
@@ -94,19 +74,11 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       totalMatches: matchCount,
-      bestKda,
-      worstKda,
-      longestGame,
-      shortestGame,
-      mostKills,
-      mostDeaths,
-      totalKills,
-      totalDeaths,
-      totalAssists,
+      bestKda, worstKda, longestGame, shortestGame, mostKills, mostDeaths,
+      totalKills, totalDeaths, totalAssists,
       avgKda: { k: matchCount > 0 ? Math.round(totalKills / matchCount * 10) / 10 : 0, d: matchCount > 0 ? Math.round(totalDeaths / matchCount * 10) / 10 : 0, a: matchCount > 0 ? Math.round(totalAssists / matchCount * 10) / 10 : 0 },
       currentStreak: { type: currentStreakType, count: currentStreak },
-      bestWinStreak,
-      bestLoseStreak,
+      bestWinStreak, bestLoseStreak,
     })
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch fun stats" }, { status: 500 })

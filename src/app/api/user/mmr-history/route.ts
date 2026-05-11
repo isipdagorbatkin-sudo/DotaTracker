@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 import { getMatchHistory, getMatchDetails, getTeamPlayers, formatRankTier, convertSteamIdToAccountId } from "@/lib/steam-api"
 
 const RANK_TIER_MMR: Record<number, number> = {
-  0: 0,
-  11: 77, 12: 231, 13: 308, 14: 385, 15: 462,
+  0: 0, 11: 77, 12: 231, 13: 308, 14: 385, 15: 462,
   21: 539, 22: 616, 23: 693, 24: 770, 25: 847,
   31: 924, 32: 1001, 33: 1078, 34: 1155, 35: 1232,
   41: 1309, 42: 1386, 43: 1463, 44: 1540, 45: 1617,
@@ -17,12 +17,12 @@ function estimateMmr(rankTier: number): number {
   return RANK_TIER_MMR[rankTier] || 0
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const steamId = searchParams.get("steamId")
+export async function GET() {
+  const session = await auth()
+  const steamId = session?.user?.steamId
 
   if (!steamId) {
-    return NextResponse.json({ error: "steamId required" }, { status: 400 })
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
   try {
@@ -41,10 +41,8 @@ export async function GET(request: Request) {
       if (!match) continue
       const playerData = getTeamPlayers(match.players, accountId)
       if (!playerData || !playerData.rank_tier) continue
-
       const isRadiant = playerData.player_slot < 128
       const won = isRadiant ? match.radiant_win : !match.radiant_win
-
       mmrHistory.push({
         date: new Date(match.start_time * 1000).toISOString().split("T")[0],
         mmr: estimateMmr(playerData.rank_tier),

@@ -1,12 +1,12 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useSession, signIn } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Search, Skull, Zap, Clock, Crosshair, Heart, TrendingUp, TrendingDown } from "lucide-react"
+import { Sparkles, Skull, Zap, Clock, Crosshair, Heart, TrendingUp, TrendingDown, LogIn } from "lucide-react"
 import { StatCard } from "@/components/ui/stat-card"
 
 interface FunStatsData {
@@ -27,33 +27,36 @@ interface FunStatsData {
 }
 
 export default function FunStatsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <FunStatsContent />
-    </Suspense>
-  )
-}
-
-function FunStatsContent() {
-  const searchParams = useSearchParams()
-  const steamId = searchParams.get("steamId") || ""
-  const [input, setInput] = useState(steamId)
+  const { data: session, status } = useSession()
   const [stats, setStats] = useState<FunStatsData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!steamId) return
+    if (status !== "authenticated") return
     setLoading(true)
     setError("")
-    fetch(`/api/user/fun-stats?steamId=${steamId}`)
+    fetch("/api/user/fun-stats")
       .then(r => r.ok ? r.json() : Promise.reject("Failed to load"))
       .then(setStats)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false))
-  }, [steamId])
+  }, [status])
 
-  if (!steamId) {
+  if (status === "loading") {
+    return (
+      <div className="relative min-h-screen">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 w-48 bg-white/5 rounded mx-auto" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
     return (
       <div className="relative min-h-screen">
         <div className="absolute inset-0 bg-grid opacity-20" />
@@ -61,19 +64,10 @@ function FunStatsContent() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="h-8 w-1 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full mx-auto mb-3" />
             <h1 className="text-3xl font-bold text-white mb-2">Fun Stats</h1>
-            <p className="text-white/50 mb-8">Enter your Steam ID to see interesting match statistics</p>
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Steam ID"
-                className="flex-1 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                onKeyDown={e => e.key === "Enter" && input && (window.location.href = `/fun-stats?steamId=${encodeURIComponent(input)}`)}
-              />
-              <Button variant="premium" onClick={() => input && (window.location.href = `/fun-stats?steamId=${encodeURIComponent(input)}`)}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+            <p className="text-white/50 mb-8">Sign in with Steam to see your match statistics</p>
+            <Button variant="premium" size="lg" onClick={() => signIn("steam")}>
+              <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
+            </Button>
           </motion.div>
         </div>
       </div>
@@ -86,7 +80,6 @@ function FunStatsContent() {
         <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
           <div className="animate-pulse space-y-4">
-            <div className="h-6 w-48 bg-white/5 rounded mx-auto" />
             <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 bg-white/5 rounded-xl" />)}
             </div>
@@ -102,7 +95,7 @@ function FunStatsContent() {
         <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative max-w-lg mx-auto px-4 py-24 text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <Button variant="outline" onClick={() => window.location.href = "/fun-stats"}>Try another ID</Button>
+          <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     )
@@ -114,7 +107,6 @@ function FunStatsContent() {
         <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative max-w-lg mx-auto px-4 py-24 text-center">
           <p className="text-white/50 mb-4">No match data found. Play some ranked games first.</p>
-          <Button variant="outline" onClick={() => window.location.href = "/fun-stats"}>Try another ID</Button>
         </div>
       </div>
     )
@@ -208,7 +200,7 @@ function FunStatsContent() {
               <CardContent className="p-5 text-center">
                 <div className="flex items-center justify-center gap-2 text-xs text-white/40 mb-2"><TrendingUp className="h-3 w-3" />Current Streak</div>
                 <div className="text-2xl font-bold text-white mb-1">
-                  {stats.currentStreak.type === "win" ? `🔥 ${stats.currentStreak.count}W` : stats.currentStreak.type === "lose" ? `💀 ${stats.currentStreak.count}L` : "—"}
+                  {stats.currentStreak.type === "win" ? `${stats.currentStreak.count}W` : stats.currentStreak.type === "lose" ? `${stats.currentStreak.count}L` : "—"}
                 </div>
               </CardContent>
             </Card>

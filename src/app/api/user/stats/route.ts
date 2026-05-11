@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
-import { getPlayerSummary, getMatchHistory, getMatchDetails, didPlayerWin, formatRankTier, getTeamPlayers, convertSteamIdToAccountId } from "@/lib/steam-api"
+import { auth } from "@/lib/auth"
+import { getPlayerSummary, getMatchHistory, getMatchDetails, getTeamPlayers, formatRankTier, convertSteamIdToAccountId } from "@/lib/steam-api"
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const steamId = searchParams.get("steamId")
+  const session = await auth()
+  const steamId = session?.user?.steamId
 
   if (!steamId) {
-    return NextResponse.json({ error: "steamId required" }, { status: 400 })
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
   try {
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     const heroCounts: Record<number, { games: number; wins: number }> = {}
     for (const m of historyItems) {
       const playerData = m.players?.find(p => p.account_id === convertSteamIdToAccountId(steamId))
-      if (!playerData || !m.radiant_win === undefined) continue
+      if (!playerData || m.radiant_win === undefined) continue
       const isRadiant = playerData.player_slot < 128
       const won = isRadiant ? m.radiant_win : !m.radiant_win
       if (!heroCounts[playerData.hero_id]) heroCounts[playerData.hero_id] = { games: 0, wins: 0 }

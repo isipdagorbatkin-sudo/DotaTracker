@@ -1,12 +1,12 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useSession, signIn } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Sparkles, TrendingUp, Sword, Globe, ExternalLink, Search } from "lucide-react"
+import { Sparkles, TrendingUp, Sword, Globe, ExternalLink, LogIn } from "lucide-react"
 import { StatCard } from "@/components/ui/stat-card"
 
 interface PlayerStats {
@@ -24,33 +24,37 @@ interface PlayerStats {
 }
 
 export default function ProfilePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <ProfileContent />
-    </Suspense>
-  )
-}
-
-function ProfileContent() {
-  const searchParams = useSearchParams()
-  const steamId = searchParams.get("steamId") || ""
-  const [input, setInput] = useState(steamId)
+  const { data: session, status } = useSession()
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!steamId) return
+    if (status !== "authenticated") return
     setLoading(true)
     setError("")
-    fetch(`/api/user/stats?steamId=${steamId}`)
-      .then(r => r.ok ? r.json() : Promise.reject("Player not found"))
+    fetch("/api/user/stats")
+      .then(r => r.ok ? r.json() : Promise.reject("Failed to load"))
       .then(setStats)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false))
-  }, [steamId])
+  }, [status])
 
-  if (!steamId) {
+  if (status === "loading") {
+    return (
+      <div className="relative min-h-screen">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
+          <div className="animate-pulse space-y-4">
+            <div className="w-20 h-20 rounded-full bg-white/5 mx-auto" />
+            <div className="h-6 w-48 bg-white/5 rounded mx-auto" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
     return (
       <div className="relative min-h-screen">
         <div className="absolute inset-0 bg-grid opacity-20" />
@@ -58,19 +62,10 @@ function ProfileContent() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="h-8 w-1 bg-gradient-to-b from-purple-500 to-cyan-500 rounded-full mx-auto mb-3" />
             <h1 className="text-3xl font-bold text-white mb-2">Player Profile</h1>
-            <p className="text-white/50 mb-8">Enter your Steam ID or custom URL to view stats</p>
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Steam ID or custom URL"
-                className="flex-1 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50"
-                onKeyDown={e => e.key === "Enter" && input && window.history.replaceState(null, "", `/profile?steamId=${encodeURIComponent(input)}`)}
-              />
-              <Button variant="premium" onClick={() => input && window.history.replaceState(null, "", `/profile?steamId=${encodeURIComponent(input)}`)}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+            <p className="text-white/50 mb-8">Sign in with Steam to view your match stats</p>
+            <Button variant="premium" size="lg" onClick={() => signIn("steam")}>
+              <LogIn className="h-4 w-4 mr-2" />Sign in via Steam
+            </Button>
           </motion.div>
         </div>
       </div>
@@ -85,7 +80,6 @@ function ProfileContent() {
           <div className="animate-pulse space-y-4">
             <div className="w-20 h-20 rounded-full bg-white/5 mx-auto" />
             <div className="h-6 w-48 bg-white/5 rounded mx-auto" />
-            <div className="h-4 w-32 bg-white/5 rounded mx-auto" />
           </div>
         </div>
       </div>
@@ -98,7 +92,7 @@ function ProfileContent() {
         <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative max-w-lg mx-auto px-4 py-24 text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <Button variant="outline" onClick={() => window.history.replaceState(null, "", "/profile")}>Try another ID</Button>
+          <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     )
