@@ -3,8 +3,6 @@ import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 
-const STEAM_API_KEY = process.env.STEAM_API_KEY || "A4F39BB226A06CDE5C52C47471E00A30"
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
@@ -38,38 +36,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         const steamId = credentials?.steamId as string
+        const name = credentials?.name as string
+        const avatar = credentials?.avatar as string
         if (!steamId) return null
 
         try {
-          const res = await fetch(
-            `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`
-          )
-          const data = await res.json()
-          const player = data?.response?.players?.[0]
-          if (!player) return null
-
-          const user = await prisma.user.upsert({
+          await prisma.user.upsert({
             where: { steamId },
-            create: {
-              steamId,
-              name: player.personaname,
-              avatar: player.avatarfull,
-            },
-            update: {
-              name: player.personaname,
-              avatar: player.avatarfull,
-            },
-          })
+            create: { steamId, name, avatar },
+            update: { name, avatar },
+          }).catch(() => {})
+        } catch {}
 
-          return {
-            id: user.steamId,
-            steamId: user.steamId,
-            name: user.name,
-            avatar: user.avatar || undefined,
-            image: user.avatar || undefined,
-          }
-        } catch {
-          return null
+        return {
+          id: steamId,
+          steamId,
+          name: name || "Unknown Player",
+          avatar: avatar || undefined,
+          image: avatar || undefined,
         }
       },
     }),
