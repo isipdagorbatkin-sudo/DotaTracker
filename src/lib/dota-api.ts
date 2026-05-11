@@ -60,10 +60,27 @@ export async function fetchHeroes(): Promise<DotaHero[]> {
   return heroesCache!
 }
 
+let heroStatsCache: any[] | null = null
+let heroStatsCacheTime = 0
+const HERO_STATS_TTL = 60 * 60 * 1000
+
 export async function fetchHeroStats(): Promise<any[]> {
-  const res = await fetch(`${OPEN_DOTA_BASE}/heroStats`)
-  if (!res.ok) throw new Error("Failed to fetch hero stats")
-  return res.json()
+  if (heroStatsCache && Date.now() - heroStatsCacheTime < HERO_STATS_TTL) {
+    return heroStatsCache
+  }
+
+  const res = await fetch(`${OPEN_DOTA_BASE}/heroStats`, {
+    next: { revalidate: 3600 },
+  })
+
+  if (!res.ok) {
+    if (heroStatsCache) return heroStatsCache
+    throw new Error("Failed to fetch hero stats")
+  }
+
+  heroStatsCache = await res.json() as any[]
+  heroStatsCacheTime = Date.now()
+  return heroStatsCache!
 }
 
 export async function fetchProMatches(): Promise<any[]> {
@@ -154,58 +171,67 @@ export function getItemsForPosition(heroId: number, position: string): string[] 
 }
 
 const memePunishments = [
-  "Mask of Madness on Crystal Maiden",
-  "Divine Rapier first item",
-  "Battle Fury on Tidehunter",
-  "Dagon on Wraith King",
-  "Radiance on Pudge",
-  "Shadow Blade on Bristleback",
-  "Aghanim's Scepter on Ogre Magi (you already have it)",
-  "Manta Style on Sven",
-  "Monkey King Bar on Zeus",
   "Boots of Travel first item (no other items)",
-  "Crimson Guard on Sniper",
-  "Pipe of Insight on Anti-Mage",
-  "Heart of Tarrasque on Pugna",
-  "Ethereal Blade on Wraith King",
-  "Orchid Malevolence on Tidehunter",
-  "Satanic on Crystal Maiden",
-  "Butterfly on Pudge",
-  "Mjollnir on Techies",
-  "Scythe of Vyse on Phantom Assassin",
-  "Armlet of Mordiggian on Sniper",
-  "Vanguard on Shadow Fiend",
-  "Soul Booster on Wraith King (just the booster)",
   "Hand of Midas at minute 40",
-  "Refresher Orb on Meepo",
-  "Abyssal Blade on Zeus",
-  "Blink Dagger on Spirit Breaker (you already have charge)",
   "Dust of Appearance (just dust, nothing else)",
   "Slippers of Agility (1 stack, no upgrade)",
-  "Divine Rapier on Techies (go suicide)",
-  "Aeon Disk on Phantom Assassin",
-  "Veil of Discord on Juggernaut",
-  "Meteor Hammer on Anti-Mage",
-  "Battle Fury onTechies",
-  "Yasha on Bristleback (no upgrade)",
-  "Kaya on Wraith King",
-  "Sange on Sniper",
-  "Echo Sabre on Zeus",
-  "Moon Shard on Crystal Maiden (consume it)",
-  "Octarine Core on Phantom Assassin",
-  "Assault Cuirass on Shadow Fiend",
-  "Drum of Endurance on Medusa",
-  "Bottle on Sniper",
-  "Soul Ring on Anti-Mage",
-  "Urn of Shadows on Phantom Assassin",
-  "Headdress on Zeus",
+  "Divine Rapier first item",
   "Bracer (7 of them)",
   "Null Talisman (7 of them)",
   "Wraith Band (7 of them)",
-  "Satanic on Techies",
   "Necronomicon (buy it and cry it's removed)",
-  "Tranquil Boots on Anti-Mage",
-  "Phase Boots on Crystal Maiden",
+  "2x Divine Rapier (you will die)",
+  "Dagon level 5 with no other items",
+  "Shadow Amulet — stand afk in trees",
+  "Only boots, sell everything else",
+  "Battle Fury on every hero",
+  "6 slot Bracers / Wraith Bands / Nulls",
+  "Meteor Hammer on every hero",
+  "Aeon Disk — become a pacifist",
+  "Glimmer Cape — play hide and seek",
+  "Force Staff your enemies into saves",
+  "Buy Courier and feed it (1 courier = 1 death)",
+  "Sentry Wards — cover the entire map",
+  "Smoke of Deceit — walk into 5 enemies",
+  "TP scroll + stick = your only items",
+  "Aghanim's Shard — buy it as first item",
+  "Blood Grenade — stack 10 of them",
+  "Abyssal Blade on a ranged hero (no stun)",
+  "Armlet — toggle forever in fights",
+  "Mask of Madness — never turn it off",
+  "Refresher Orb — use it on cooldown for nothing",
+  "Farm jungle for the entire game",
+  "Don't buy a single ward all game",
+  "Run down mid every death",
+  "Ward their fountain",
+  "Rosh when enemies are alive and nearby",
+  "Use Moon Shard on the enemy carry",
+  "Buy a Rapier and give it to enemy",
+  "Sell all items at minute 30",
+  "Stack ancients for 20 minutes straight",
+  "Block your own camps",
+  "Pull creeps into the enemy tower",
+  "Steal last hits from your carry",
+  "Do not level up your ultimate",
+  "Level stats instead of abilities",
+  "Go 0-20 challenge — die every 2 minutes",
+  "Don't use TPs — walk everywhere",
+  "Fill inventory with Fairy Fires",
+  "Buy Courier and follow the enemy carry",
+  "Plant Observer Wards in your own jungle",
+  "Use Smoke of Deceit on cooldown alone",
+  "Build Vladmir's on a carry (buff the enemy)",
+  "Only auto-attack, no spells allowed",
+  "Helm of the Dominator — dominate a creep and do nothing",
+  "Soul Ring — use it even at full HP",
+  "Urn of Shadows — never use the charges",
+  "Headdress aura — it does nothing (stacks)",
+  "Ring of Basilius — turn it on, never off",
+  "Phase Boots — phase into enemy team",
+  "Tranquil Boots — break them on purpose",
+  "Arcane Boots — don't use the active",
+  "Blink Dagger straight into 5 enemies",
+  "Shadow Blade — declare yourself every time",
 ]
 
 export function getRandomPunishment(): string {

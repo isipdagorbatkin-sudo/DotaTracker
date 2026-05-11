@@ -27,35 +27,31 @@ export async function GET(request: Request) {
       }
     }
 
-    const MIN_GAMES = 500
+    const heroes = filtered.map((h: any) => {
+      const pick = h.pub_pick ?? h.pro_pick ?? 0
+      const win = h.pub_win ?? h.pro_win ?? 0
+      const ban = h.pro_ban ?? 0
+      const totalGames = pick + ban
 
-    const heroes = filtered
-      .filter((h: any) => (h.pick ?? h.pro_pick ?? 0) >= MIN_GAMES)
-      .map((h: any) => {
-        const pick = h.pick ?? h.pro_pick ?? 0
-        const win = h.win ?? h.pro_win ?? 0
-        const ban = h.ban ?? h.pro_ban ?? 0
-        const totalGames = pick + ban
+      const winrate = pick ? (win / pick) * 100 : 50
+      const pickRate = pick ? Math.min(pick / Math.max(totalGames, 1) * 100, 100) : 0
+      const banRate = ban ? Math.min(ban / Math.max(totalGames, 1) * 100, 100) : 0
 
-        const winrate = pick ? (win / pick) * 100 : 50
-        const pickRate = Math.min(pick / Math.max(totalGames, 1) * 100, 100)
-        const banRate = Math.min(ban / Math.max(totalGames, 1) * 100, 100)
-
-        return {
-          id: h.id,
-          name: h.localized_name,
-          primary_attr: h.primary_attr,
-          attack_type: h.attack_type,
-          roles: h.roles || [],
-          winrate: Math.round(winrate * 10) / 10,
-          pickRate: Math.round(pickRate * 10) / 10,
-          banRate: Math.round(banRate * 10) / 10,
-          games: pick,
-          wins: win,
-          bans: ban,
-          metaScore: Math.round((winrate + pickRate * 0.5 + banRate * 0.3) * 10) / 10,
-        }
-      })
+      return {
+        id: h.id,
+        name: h.localized_name,
+        primary_attr: h.primary_attr,
+        attack_type: h.attack_type,
+        roles: h.roles || [],
+        winrate: Math.round(winrate * 10) / 10,
+        pickRate: Math.round(pickRate * 10) / 10,
+        banRate: Math.round(banRate * 10) / 10,
+        games: pick,
+        wins: win,
+        bans: ban,
+        metaScore: Math.round((winrate + pickRate * 0.5 + banRate * 0.3) * 10) / 10,
+      }
+    })
 
     heroes.sort((a: any, b: any) => {
       switch (sortBy) {

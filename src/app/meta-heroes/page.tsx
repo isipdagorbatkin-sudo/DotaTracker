@@ -71,9 +71,9 @@ interface MetaAPIResponse {
     winrate: number
     pickRate: number
     banRate: number
-    proPick: number
-    proWin: number
-    proBan: number
+    games: number
+    wins: number
+    bans: number
     metaScore: number
   }[]
 }
@@ -92,7 +92,7 @@ async function fetchMetaHeroes(position: string, sort: string): Promise<HeroMeta
     winRate: h.winrate,
     pickRate: h.pickRate,
     banRate: h.banRate,
-    matchCount: h.proPick + h.proBan,
+    matchCount: h.games + h.bans,
     metaScore: h.metaScore,
     positions: getPositionsForHero(h.roles),
   }))
@@ -253,15 +253,21 @@ export default function MetaHeroesPage() {
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("all")
   const [sortKey, setSortKey] = useState<SortKey>("winRate")
   const [showFilters, setShowFilters] = useState(false)
+  const [loadingDuration, setLoadingDuration] = useState(0)
   const patch = getCurrentPatch()
 
   useEffect(() => {
     let cancelled = false
+    let loadTimer: ReturnType<typeof setInterval> | null = null
 
     async function load() {
       try {
         setLoading(true)
+        setLoadingDuration(0)
         setError(null)
+        loadTimer = setInterval(() => {
+          if (!cancelled) setLoadingDuration(prev => prev + 1)
+        }, 1000)
         const meta = await fetchMetaHeroes(positionFilter, sortKey)
         if (cancelled) return
         setHeroMetaList(meta)
@@ -269,11 +275,15 @@ export default function MetaHeroesPage() {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load heroes")
       } finally {
         if (!cancelled) setLoading(false)
+        if (loadTimer) clearInterval(loadTimer)
       }
     }
 
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      if (loadTimer) clearInterval(loadTimer)
+    }
   }, [positionFilter, sortKey])
 
   const sortedHeroes = useMemo(() => {
@@ -448,10 +458,36 @@ export default function MetaHeroesPage() {
         </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <ShimmerCard key={i} />
-            ))}
+          <div>
+            {loadingDuration >= 15 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center text-center mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5"
+              >
+                <p className="text-amber-300/80 text-sm mb-2">
+                  {loadingDuration >= 30
+                    ? "This is taking longer than expected. OpenDota API may be slow — you can retry or wait."
+                    : "Still loading meta data from OpenDota API..."}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-white/40">
+                  <span>Elapsed: {loadingDuration}s</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.location.reload()}
+                    className="text-xs"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <ShimmerCard key={i} />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
