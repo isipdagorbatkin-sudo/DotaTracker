@@ -1,14 +1,14 @@
 "use client"
 
-import { useMemo } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   TrendingUp, TrendingDown, Calendar, BarChart3,
-  Plus, Minus, Sparkles, Clock,
+  Plus, Minus, Sparkles, Clock, Loader2,
 } from "lucide-react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Area, AreaChart,
+  AreaChart, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Area,
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -16,30 +16,26 @@ import { Badge } from "@/components/ui/badge"
 import { StatCard } from "@/components/ui/stat-card"
 import { cn, formatMMR } from "@/lib/utils"
 
-const DAYS = 30
-const START_MMR = 3500
+interface MMRDataPoint {
+  date: string
+  mmrChange: number
+  games: number
+  wins: number
+  cumulativeMMR: number
+}
 
-function generateMockData() {
-  let current = START_MMR
-  const data: { date: string; change: number; mmr: number; matches: number }[] = []
-  for (let i = DAYS; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const change = i === 0 ? 0 : Math.floor(Math.random() * 101) - 50
-    current += change
-    data.push({
-      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      change,
-      mmr: current,
-      matches: Math.floor(Math.random() * 5) + 1,
-    })
-  }
-  return data
+interface MMRResponse {
+  today: number
+  week: number
+  month: number
+  allTime: number
+  chartData: MMRDataPoint[]
+  recentChanges: { date: string; mmrChange: number; games: number; wins: number }[]
 }
 
 interface CustomTooltipProps {
   active?: boolean
-  payload?: { payload: { date: string; change: number; mmr: number; matches: number } }[]
+  payload?: { payload: MMRDataPoint }[]
   label?: string
 }
 
@@ -49,34 +45,70 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/90 backdrop-blur-xl p-4 shadow-2xl">
       <p className="text-sm text-white/50 mb-2">{d.date}</p>
-      <p className="text-lg font-bold text-white mb-1">{d.mmr.toLocaleString()} MMR</p>
+      <p className="text-lg font-bold text-white mb-1">{d.cumulativeMMR.toLocaleString()} MMR</p>
       <div className="flex items-center gap-1.5 text-sm">
-        {d.change >= 0 ? (
+        {d.mmrChange >= 0 ? (
           <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
         ) : (
           <TrendingDown className="h-3.5 w-3.5 text-red-400" />
         )}
-        <span className={d.change >= 0 ? "text-emerald-400" : "text-red-400"}>
-          {formatMMR(d.change)}
+        <span className={d.mmrChange >= 0 ? "text-emerald-400" : "text-red-400"}>
+          {formatMMR(d.mmrChange)}
         </span>
       </div>
-      <p className="text-xs text-white/40 mt-1">{d.matches} matches</p>
+      <p className="text-xs text-white/40 mt-1">{d.games} matches ({d.wins}W / {d.games - d.wins}L)</p>
     </div>
   )
 }
 
 export default function MMRTrackerPage() {
-  const historyData = useMemo(() => generateMockData(), [])
+  const [data, setData] = useState<MMRResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const todayEntry = historyData[historyData.length - 1]
-  const weekEntries = historyData.slice(-7)
-  const monthEntries = historyData
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch("/api/user/mmr-history")
+        if (!res.ok) {
+          if (res.status === 401) setError("Please sign in to view MMR history")
+          else setError("Failed to load MMR history")
+          return
+        }
+        const json = await res.json()
+        setData(json)
+      } catch {
+        setError("Failed to load MMR history")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
 
-  const weekChange = weekEntries.reduce((sum, e) => sum + e.change, 0)
-  const monthChange = monthEntries.reduce((sum, e) => sum + e.change, 0)
-  const allTimeChange = todayEntry.mmr - historyData[0].mmr
+  if (loading) {
+    return (
+      <div className="relative min-h-screen">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 flex justify-center">
+          <Loader2 className="h-8 w-8 text-emerald-400 animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
-  const recentChanges = [...historyData].reverse().slice(0, 10)
+  if (error) {
+    return (
+      <div className="relative min-h-screen">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+          <p className="text-white/60 text-lg">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return null
 
   return (
     <div className="relative min-h-screen">
@@ -108,31 +140,31 @@ export default function MMRTrackerPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="MMR Today"
-            value={formatMMR(todayEntry.change)}
-            icon={todayEntry.change >= 0 ? <TrendingUp /> : <TrendingDown />}
-            trend={todayEntry.change >= 0 ? "up" : "down"}
-            color={todayEntry.change >= 0 ? "emerald" : "red"}
+            value={formatMMR(data.today)}
+            icon={data.today >= 0 ? <TrendingUp /> : <TrendingDown />}
+            trend={data.today >= 0 ? "up" : "down"}
+            color={data.today >= 0 ? "emerald" : "red"}
           />
           <StatCard
             label="MMR This Week"
-            value={formatMMR(weekChange)}
+            value={formatMMR(data.week)}
             icon={<Calendar />}
-            trend={weekChange >= 0 ? "up" : "down"}
-            color={weekChange >= 0 ? "emerald" : "red"}
+            trend={data.week >= 0 ? "up" : "down"}
+            color={data.week >= 0 ? "emerald" : "red"}
           />
           <StatCard
             label="MMR This Month"
-            value={formatMMR(monthChange)}
+            value={formatMMR(data.month)}
             icon={<BarChart3 />}
-            trend={monthChange >= 0 ? "up" : "down"}
-            color={monthChange >= 0 ? "emerald" : "red"}
+            trend={data.month >= 0 ? "up" : "down"}
+            color={data.month >= 0 ? "emerald" : "red"}
           />
           <StatCard
             label="MMR All Time"
-            value={formatMMR(allTimeChange)}
+            value={formatMMR(data.allTime)}
             icon={<Clock />}
-            trend={allTimeChange >= 0 ? "up" : "down"}
-            color={allTimeChange >= 0 ? "emerald" : "red"}
+            trend={data.allTime >= 0 ? "up" : "down"}
+            color={data.allTime >= 0 ? "emerald" : "red"}
           />
         </div>
 
@@ -147,7 +179,7 @@ export default function MMRTrackerPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>MMR Progression</CardTitle>
-                  <CardDescription>Your MMR over the last 30 days</CardDescription>
+                  <CardDescription>Your MMR over recent matches</CardDescription>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-white/40">
                   <div className="flex items-center gap-1">
@@ -160,7 +192,7 @@ export default function MMRTrackerPage() {
             <CardContent>
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={historyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <AreaChart data={data.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="mmrGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.4} />
@@ -190,7 +222,7 @@ export default function MMRTrackerPage() {
                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(255,255,255,0.1)", strokeWidth: 1 }} />
                     <Area
                       type="monotone"
-                      dataKey="mmr"
+                      dataKey="cumulativeMMR"
                       stroke="url(#mmrLineGradient)"
                       strokeWidth={2.5}
                       fill="url(#mmrGradient)"
@@ -216,7 +248,7 @@ export default function MMRTrackerPage() {
                   <CardTitle>Recent Changes</CardTitle>
                   <CardDescription>Your latest MMR updates</CardDescription>
                 </div>
-                <Badge variant="outline">{recentChanges.length} entries</Badge>
+                <Badge variant="outline">{data.recentChanges.length} entries</Badge>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -226,12 +258,12 @@ export default function MMRTrackerPage() {
                     <tr className="border-b border-white/5">
                       <th className="text-left text-xs font-medium text-white/40 uppercase tracking-wider px-6 py-3">Date</th>
                       <th className="text-left text-xs font-medium text-white/40 uppercase tracking-wider px-6 py-3">Change</th>
-                      <th className="text-left text-xs font-medium text-white/40 uppercase tracking-wider px-6 py-3">MMR</th>
                       <th className="text-left text-xs font-medium text-white/40 uppercase tracking-wider px-6 py-3">Matches</th>
+                      <th className="text-left text-xs font-medium text-white/40 uppercase tracking-wider px-6 py-3">Record</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentChanges.map((entry, i) => (
+                    {data.recentChanges.map((entry, i) => (
                       <motion.tr
                         key={entry.date + i}
                         initial={{ opacity: 0, x: -10 }}
@@ -244,7 +276,7 @@ export default function MMRTrackerPage() {
                         <td className="px-6 py-4 text-sm text-white/70">{entry.date}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
-                            {entry.change >= 0 ? (
+                            {entry.mmrChange >= 0 ? (
                               <Plus className="h-3.5 w-3.5 text-emerald-400" />
                             ) : (
                               <Minus className="h-3.5 w-3.5 text-red-400" />
@@ -252,15 +284,15 @@ export default function MMRTrackerPage() {
                             <span
                               className={cn(
                                 "text-sm font-medium",
-                                entry.change >= 0 ? "text-emerald-400" : "text-red-400",
+                                entry.mmrChange >= 0 ? "text-emerald-400" : "text-red-400",
                               )}
                             >
-                              {Math.abs(entry.change)}
+                              {Math.abs(entry.mmrChange)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-white">{entry.mmr.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-white/50">{entry.matches}</td>
+                        <td className="px-6 py-4 text-sm text-white/50">{entry.games}</td>
+                        <td className="px-6 py-4 text-sm text-white/50">{entry.wins}W / {entry.games - entry.wins}L</td>
                       </motion.tr>
                     ))}
                   </tbody>
@@ -276,11 +308,11 @@ export default function MMRTrackerPage() {
           transition={{ delay: 0.45 }}
           className="mt-8 flex justify-center gap-4"
         >
-          <Button variant="outline">
+          <Button variant="outline" disabled>
             <Plus className="h-4 w-4" />
             Add Manual Entry
           </Button>
-          <Button variant="default">
+          <Button variant="default" disabled>
             <TrendingUp className="h-4 w-4" />
             Sync with Steam
           </Button>

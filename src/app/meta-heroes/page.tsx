@@ -1,18 +1,22 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Sword, TrendingUp, BarChart3, Users, Star, Shield, Sparkles, Filter, ChevronDown } from "lucide-react"
+import { Sword, TrendingUp, Users, Star, Shield, Sparkles, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { StatCard } from "@/components/ui/stat-card"
-import { fetchHeroes, fetchHeroStats, getCurrentPatch } from "@/lib/dota-api"
-import type { DotaHero } from "@/lib/dota-api"
+import { getCurrentPatch } from "@/lib/dota-api"
 import { cn, getWinRateColor } from "@/lib/utils"
 
 interface HeroMeta {
-  hero: DotaHero
+  id: number
+  name: string
+  localized_name: string
+  primary_attr: string
+  attack_type: string
+  roles: string[]
   winRate: number
   pickRate: number
   banRate: number
@@ -46,33 +50,52 @@ const ATTR_CONFIG: Record<string, { color: string; label: string }> = {
   all: { color: "text-yellow-400", label: "Universal" },
 }
 
-function getPositionsForHero(hero: DotaHero): string[] {
+function getPositionsForHero(roles: string[]): string[] {
   const positions: string[] = []
-  if (hero.roles.some(r => ["Carry", "Escape"].includes(r))) positions.push("pos1")
-  if (hero.roles.some(r => ["Nuker", "Disabler"].includes(r))) positions.push("pos2")
-  if (hero.roles.some(r => ["Initiator", "Durable", "Escape"].includes(r))) positions.push("pos3")
-  if (hero.roles.some(r => ["Support", "Disabler"].includes(r))) positions.push("pos4")
-  if (hero.roles.includes("Support") && !hero.roles.includes("Escape")) positions.push("pos5")
+  if (roles.some(r => ["Carry", "Escape"].includes(r))) positions.push("pos1")
+  if (roles.some(r => ["Nuker", "Disabler"].includes(r))) positions.push("pos2")
+  if (roles.some(r => ["Initiator", "Durable", "Escape"].includes(r))) positions.push("pos3")
+  if (roles.some(r => ["Support", "Disabler"].includes(r))) positions.push("pos4")
+  if (roles.includes("Support") && !roles.includes("Escape")) positions.push("pos5")
   return positions.length > 0 ? positions : ["pos3"]
 }
 
-function generateMockMeta(heroes: DotaHero[]): HeroMeta[] {
-  const seededRandom = (seed: number) => {
-    const x = Math.sin(seed * 9301 + 49297) * 49297
-    return x - Math.floor(x)
-  }
+interface MetaAPIResponse {
+  patch: string
+  heroes: {
+    id: number
+    name: string
+    primary_attr: string
+    attack_type: string
+    roles: string[]
+    winrate: number
+    pickRate: number
+    banRate: number
+    proPick: number
+    proWin: number
+    proBan: number
+    metaScore: number
+  }[]
+}
 
-  return heroes.map((hero, i) => {
-    const seed = hero.id * 1337
-    const winRate = 45 + seededRandom(seed) * 13
-    const pickRate = 3 + seededRandom(seed + 1) * 32
-    const banRate = 1 + seededRandom(seed + 2) * 24
-    const matchCount = Math.floor(5000 + seededRandom(seed + 3) * 95000)
-    const positions = getPositionsForHero(hero)
-    const metaScore = +(winRate * 0.4 + pickRate * 1.2 + banRate * 0.6).toFixed(1)
-
-    return { hero, winRate, pickRate, banRate, matchCount, metaScore, positions }
-  })
+async function fetchMetaHeroes(position: string, sort: string): Promise<HeroMeta[]> {
+  const res = await fetch(`/api/dota/meta?position=${position}&sort=${sort}`)
+  if (!res.ok) throw new Error("Failed to fetch meta heroes")
+  const data: MetaAPIResponse = await res.json()
+  return data.heroes.map((h) => ({
+    id: h.id,
+    name: h.name,
+    localized_name: h.name,
+    primary_attr: h.primary_attr,
+    attack_type: h.attack_type,
+    roles: h.roles,
+    winRate: h.winrate,
+    pickRate: h.pickRate,
+    banRate: h.banRate,
+    matchCount: h.proPick + h.proBan,
+    metaScore: h.metaScore,
+    positions: getPositionsForHero(h.roles),
+  }))
 }
 
 function ShimmerCard() {
@@ -120,8 +143,8 @@ function ShimmerCard() {
 }
 
 function HeroCard({ heroMeta, index }: { heroMeta: HeroMeta; index: number }) {
-  const { hero, winRate, pickRate, banRate, metaScore, positions } = heroMeta
-  const attr = ATTR_CONFIG[hero.primary_attr] || ATTR_CONFIG.str
+  const { localized_name, primary_attr, attack_type, roles, winRate, pickRate, banRate, metaScore, positions } = heroMeta
+  const attr = ATTR_CONFIG[primary_attr] || ATTR_CONFIG.str
   const winRateColor = getWinRateColor(winRate)
 
   return (
@@ -136,18 +159,18 @@ function HeroCard({ heroMeta, index }: { heroMeta: HeroMeta; index: number }) {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold border",
-                hero.primary_attr === "str" && "bg-red-500/10 border-red-500/30 text-red-400",
-                hero.primary_attr === "agi" && "bg-green-500/10 border-green-500/30 text-green-400",
-                hero.primary_attr === "int" && "bg-blue-500/10 border-blue-500/30 text-blue-400",
-                hero.primary_attr === "all" && "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
+                primary_attr === "str" && "bg-red-500/10 border-red-500/30 text-red-400",
+                primary_attr === "agi" && "bg-green-500/10 border-green-500/30 text-green-400",
+                primary_attr === "int" && "bg-blue-500/10 border-blue-500/30 text-blue-400",
+                primary_attr === "all" && "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
               )}>
-                {hero.primary_attr === "str" ? "S" : hero.primary_attr === "agi" ? "A" : hero.primary_attr === "int" ? "I" : "U"}
+                {primary_attr === "str" ? "S" : primary_attr === "agi" ? "A" : primary_attr === "int" ? "I" : "U"}
               </div>
               <div>
                 <h3 className="font-bold text-white text-lg leading-tight group-hover:text-amber-300 transition-colors duration-300">
-                  {hero.localized_name}
+                  {localized_name}
                 </h3>
-                <p className="text-xs text-white/40">{hero.attack_type} · {attr.label}</p>
+                <p className="text-xs text-white/40">{attack_type} · {attr.label}</p>
               </div>
             </div>
             <div className="text-right">
@@ -159,7 +182,7 @@ function HeroCard({ heroMeta, index }: { heroMeta: HeroMeta; index: number }) {
           </div>
 
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {hero.roles.slice(0, 3).map(role => (
+            {roles.slice(0, 3).map(role => (
               <Badge key={role} variant="outline" className="text-[10px] px-2 py-0 border-white/10 text-white/50">
                 {role}
               </Badge>
@@ -224,7 +247,6 @@ function HeroCard({ heroMeta, index }: { heroMeta: HeroMeta; index: number }) {
 }
 
 export default function MetaHeroesPage() {
-  const [heroes, setHeroes] = useState<DotaHero[]>([])
   const [heroMetaList, setHeroMetaList] = useState<HeroMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -240,10 +262,9 @@ export default function MetaHeroesPage() {
       try {
         setLoading(true)
         setError(null)
-        const h = await fetchHeroes()
+        const meta = await fetchMetaHeroes(positionFilter, sortKey)
         if (cancelled) return
-        setHeroes(h)
-        setHeroMetaList(generateMockMeta(h))
+        setHeroMetaList(meta)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load heroes")
       } finally {
@@ -253,24 +274,18 @@ export default function MetaHeroesPage() {
 
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [positionFilter, sortKey])
 
-  const filteredAndSorted = useMemo(() => {
-    let list = heroMetaList
-
-    if (positionFilter !== "all") {
-      list = list.filter(h => h.positions.includes(positionFilter))
-    }
-
-    return [...list].sort((a, b) => {
+  const sortedHeroes = useMemo(() => {
+    return [...heroMetaList].sort((a, b) => {
       switch (sortKey) {
         case "winRate": return b.winRate - a.winRate
         case "pickRate": return b.pickRate - a.pickRate
         case "banRate": return b.banRate - a.banRate
-        default: return 0
+        default: return b.metaScore - a.metaScore
       }
     })
-  }, [heroMetaList, positionFilter, sortKey])
+  }, [heroMetaList, sortKey])
 
   const summaryStats = useMemo(() => {
     if (heroMetaList.length === 0) return null
@@ -346,7 +361,7 @@ export default function MetaHeroesPage() {
             <StatCard label="Avg Win Rate" value={`${summaryStats.avgWinRate.toFixed(1)}%`} icon={<TrendingUp className="h-4 w-4" />} color="emerald" />
             <StatCard label="Avg Pick Rate" value={`${summaryStats.avgPickRate.toFixed(1)}%`} icon={<Users className="h-4 w-4" />} color="cyan" />
             <StatCard label="Avg Ban Rate" value={`${summaryStats.avgBanRate.toFixed(1)}%`} icon={<Shield className="h-4 w-4" />} color="red" />
-            <StatCard label="Top Meta Hero" value={summaryStats.topMeta.hero.localized_name} icon={<Star className="h-4 w-4" />} color="yellow" />
+            <StatCard label="Top Meta Hero" value={summaryStats.topMeta.localized_name} icon={<Star className="h-4 w-4" />} color="yellow" />
           </motion.div>
         )}
 
@@ -441,14 +456,14 @@ export default function MetaHeroesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence mode="popLayout">
-              {filteredAndSorted.map((heroMeta, i) => (
-                <HeroCard key={heroMeta.hero.id} heroMeta={heroMeta} index={i} />
+              {sortedHeroes.map((heroMeta, i) => (
+                <HeroCard key={heroMeta.id} heroMeta={heroMeta} index={i} />
               ))}
             </AnimatePresence>
           </div>
         )}
 
-        {!loading && filteredAndSorted.length === 0 && (
+        {!loading && sortedHeroes.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -475,7 +490,7 @@ export default function MetaHeroesPage() {
             transition={{ delay: 0.5 }}
             className="mt-6 text-center text-xs text-white/20"
           >
-            Showing {filteredAndSorted.length} of {heroMetaList.length} heroes · Patch {patch}
+            Showing {sortedHeroes.length} of {heroMetaList.length} heroes · Patch {patch}
           </motion.div>
         )}
       </div>

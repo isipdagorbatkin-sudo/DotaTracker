@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { signIn } from "@/lib/auth"
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY || "A4F39BB226A06CDE5C52C47471E00A30"
 
@@ -23,15 +22,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/?error=steam_fetch_failed", request.url))
     }
 
-    await signIn("credentials", {
-      steamId: player.steamid,
-      name: player.personaname,
-      avatar: player.avatarfull,
-      redirect: false,
-    })
+    const callbackUrl = new URL("/auth/callback", request.url)
+    callbackUrl.searchParams.set("steamId", player.steamid)
+    callbackUrl.searchParams.set("name", player.personaname)
+    callbackUrl.searchParams.set("avatar", player.avatarfull)
+    return NextResponse.redirect(callbackUrl)
   } catch {
-    // signIn may throw on redirect
+    return NextResponse.redirect(new URL("/?error=auth_failed", request.url))
   }
-
-  return NextResponse.redirect(new URL("/dashboard", request.url))
 }
