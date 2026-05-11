@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   const session = await auth()
@@ -10,14 +9,24 @@ export async function GET() {
 
   try {
     const steamId = session.user.steamId
-    const res = await fetch(`https://api.opendota.com/api/players/${steamId}`)
-    const data = await res.json()
 
-    const winLossRes = await fetch(`https://api.opendota.com/api/players/${steamId}/wl`)
-    const winLoss = await winLossRes.json()
+    const ac = new AbortController()
+    const timeout = setTimeout(() => ac.abort(), 15000)
 
-    const recentRes = await fetch(`https://api.opendota.com/api/players/${steamId}/recentMatches`)
+    const [wlRes, recentRes] = await Promise.all([
+      fetch(`https://api.opendota.com/api/players/${steamId}/wl`, { signal: ac.signal }),
+      fetch(`https://api.opendota.com/api/players/${steamId}/recentMatches`, { signal: ac.signal }),
+    ])
+    clearTimeout(timeout)
+
+    const winLoss = await wlRes.json()
     const recentMatches = await recentRes.json()
+
+    const playerAc = new AbortController()
+    const playerTimeout = setTimeout(() => playerAc.abort(), 10000)
+    const playerResp = await fetch(`https://api.opendota.com/api/players/${steamId}`, { signal: playerAc.signal })
+    clearTimeout(playerTimeout)
+    const data = await playerResp.json()
 
     return NextResponse.json({
       profile: data.profile || {},
@@ -26,7 +35,7 @@ export async function GET() {
       winLoss,
       recentMatches: recentMatches?.slice(0, 10) || [],
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 })
   }
 }

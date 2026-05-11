@@ -9,7 +9,12 @@ export async function GET() {
 
   try {
     const steamId = session.user.steamId
-    const res = await fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`)
+
+    const ac = new AbortController()
+    const timeout = setTimeout(() => ac.abort(), 15000)
+
+    const res = await fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`, { signal: ac.signal })
+    clearTimeout(timeout)
     const matches = await res.json()
 
     const daily: Record<string, { games: number; wins: number; mmrChange: number }> = {}

@@ -10,15 +10,18 @@ export async function GET() {
   try {
     const steamId = session.user.steamId
 
-    const [matchesRes, heroesRes, recentRes] = await Promise.all([
-      fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`),
-      fetch(`https://api.opendota.com/api/players/${steamId}/heroes`),
-      fetch(`https://api.opendota.com/api/players/${steamId}/recentMatches`),
+    const ac = new AbortController()
+    const timeout = setTimeout(() => ac.abort(), 15000)
+
+    const [matchesRes, heroesRes] = await Promise.all([
+      fetch(`https://api.opendota.com/api/players/${steamId}/matches?limit=100`, { signal: ac.signal }),
+      fetch(`https://api.opendota.com/api/players/${steamId}/heroes`, { signal: ac.signal }),
     ])
+
+    clearTimeout(timeout)
 
     const matches = await matchesRes.json()
     const heroStats = await heroesRes.json()
-    const recent = await recentRes.json()
 
     let longestGame = 0
     let bestKDA = { kills: 0, deaths: 0, assists: 0, matchId: 0 }
