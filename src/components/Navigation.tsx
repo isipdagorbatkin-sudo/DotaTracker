@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import {
-  Sword, Dice1 as Dice, CircleDot, BarChart3, Target,
+  Sword, Dice1 as Dice, CircleDot, BarChart3, Target, TrendingUp, Users,
   Menu, X, ChevronRight, Sparkles,
 } from "lucide-react"
 import { useState } from "react"
@@ -16,6 +16,9 @@ const navLinks = [
   { href: "/draft-helper", label: "Draft Helper", icon: Target },
   { href: "/meta-heroes", label: "Meta Heroes", icon: Sword },
   { href: "/punishment-wheel", label: "Punishment Wheel", icon: CircleDot },
+  { href: "/profile", label: "Profile", icon: Users },
+  { href: "/mmr-tracker", label: "MMR", icon: TrendingUp },
+  { href: "/fun-stats", label: "Fun Stats", icon: Sparkles },
 ]
 
 export function Navigation() {

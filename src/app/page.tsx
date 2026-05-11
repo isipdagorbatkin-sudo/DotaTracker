@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Dice1 as Dice, CircleDot, Target, Sword,
+  Dice1 as Dice, CircleDot, Target, Sword, TrendingUp, Users,
   Sparkles, ArrowRight, ChevronRight,
 } from "lucide-react"
 
@@ -37,6 +37,20 @@ const features = [
     desc: "Current patch hero rankings with winrates, pickrates and banrates",
     href: "/meta-heroes",
     color: "from-amber-500 to-orange-500",
+  },
+  {
+    icon: TrendingUp,
+    title: "MMR Tracker",
+    desc: "Track your rank progression with beautiful charts",
+    href: "/mmr-tracker",
+    color: "from-emerald-500 to-teal-500",
+  },
+  {
+    icon: Users,
+    title: "Player Profile",
+    desc: "Your match stats, win rate, and most played heroes",
+    href: "/profile",
+    color: "from-violet-500 to-purple-500",
   },
 ]
 
@@ -94,7 +108,7 @@ export default function HomePage() {
               transition={{ delay: 0.2 }}
               className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-10"
             >
-              Analyze drafts, discover meta heroes, randomize builds, and more.
+              Analyze drafts, track MMR, discover meta heroes, randomize builds, and more.
               Your ultimate companion for Dota 2.
             </motion.p>
 
@@ -135,7 +149,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature) => {
               const Icon = feature.icon
               return (
@@ -173,7 +187,7 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-4 text-xs text-white/20">
               <span>Not affiliated with Valve Corporation</span>
-              <span>Data via OpenDota API</span>
+              <span>Data via Steam API + OpenDota API</span>
             </div>
           </div>
         </footer>
