@@ -1,12 +1,13 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 
 function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const steamId = searchParams.get("steamId")
@@ -18,13 +19,30 @@ function CallbackContent() {
       return
     }
 
-    signIn("credentials", {
+    signIn("steam", {
       steamId,
       name: name || "",
       avatar: avatar || "",
-      redirectTo: "/dashboard",
+      redirect: false,
+    }).then((result) => {
+      if (result?.error) {
+        setError(`Sign-in failed: ${result.error}`)
+      } else {
+        router.push("/dashboard")
+      }
     })
   }, [searchParams, router])
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error}</p>
+          <a href="/" className="text-purple-400 hover:underline">Go back</a>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">

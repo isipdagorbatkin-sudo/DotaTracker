@@ -28,10 +28,14 @@ export async function GET(request: Request) {
     }
 
     const heroes = filtered.map((h: any) => {
-      const totalGames = (h.pro_pick || 0) + (h.pro_ban || 0)
-      const winrate = h.pro_pick ? ((h.pro_win || 0) / h.pro_pick) * 100 : 50
-      const pickRate = Math.min((h.pro_pick || 0) / Math.max(totalGames, 1) * 100, 100)
-      const banRate = Math.min((h.pro_ban || 0) / Math.max(totalGames, 1) * 100, 100)
+      const pick = h.pick || h.pro_pick || 0
+      const win = h.win || h.pro_win || 0
+      const ban = h.ban || h.pro_ban || 0
+      const totalGames = pick + ban
+
+      const winrate = pick ? (win / pick) * 100 : 50
+      const pickRate = Math.min(pick / Math.max(totalGames, 1) * 100, 100)
+      const banRate = Math.min(ban / Math.max(totalGames, 1) * 100, 100)
 
       return {
         id: h.id,
@@ -42,9 +46,9 @@ export async function GET(request: Request) {
         winrate: Math.round(winrate * 10) / 10,
         pickRate: Math.round(pickRate * 10) / 10,
         banRate: Math.round(banRate * 10) / 10,
-        proPick: h.pro_pick || 0,
-        proWin: h.pro_win || 0,
-        proBan: h.pro_ban || 0,
+        proPick: pick,
+        proWin: win,
+        proBan: ban,
         metaScore: Math.round((winrate + pickRate * 0.5 + banRate * 0.3) * 10) / 10,
       }
     })
