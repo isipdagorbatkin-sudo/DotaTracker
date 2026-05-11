@@ -5,8 +5,8 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Dice1 as Dice, CircleDot, TrendingUp, Target, Sword, Users,
-  Sparkles, ArrowRight, ChevronRight, Shield,
+  Dice1 as Dice, CircleDot, Target, Sword,
+  Sparkles, ArrowRight, ChevronRight,
 } from "lucide-react"
 
 const features = [
@@ -27,30 +27,16 @@ const features = [
   {
     icon: CircleDot,
     title: "Punishment Wheel",
-    desc: "Meme punishment wheel — get random cursed item builds",
+    desc: "Random cursed item builds and meme punishments",
     href: "/punishment-wheel",
     color: "from-pink-500 to-rose-500",
   },
   {
-    icon: TrendingUp,
-    title: "MMR Tracker",
-    desc: "Track your MMR history with beautiful charts and statistics",
-    href: "/mmr-tracker",
-    color: "from-emerald-500 to-teal-500",
-  },
-  {
     icon: Sword,
     title: "Meta Heroes",
-    desc: "Current patch meta heroes with winrates, pickrates and banrates",
+    desc: "Current patch hero rankings with winrates, pickrates and banrates",
     href: "/meta-heroes",
     color: "from-amber-500 to-orange-500",
-  },
-  {
-    icon: Users,
-    title: "Fun Stats",
-    desc: "Interesting statistics: best KDA, longest game, highest damage and more",
-    href: "/fun-stats",
-    color: "from-violet-500 to-purple-500",
   },
 ]
 
@@ -108,7 +94,7 @@ export default function HomePage() {
               transition={{ delay: 0.2 }}
               className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-10"
             >
-              Analyze drafts, track MMR, discover meta heroes, randomize builds, and more.
+              Analyze drafts, discover meta heroes, randomize builds, and more.
               Your ultimate companion for Dota 2.
             </motion.p>
 
@@ -149,7 +135,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature) => {
               const Icon = feature.icon
               return (
@@ -178,33 +164,6 @@ export default function HomePage() {
             })}
           </div>
         </motion.section>
-
-        <section className="border-t border-white/10 py-16 px-4">
-          <div className="mx-auto max-w-5xl text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Ready to <span className="text-gradient">Dominate</span>?
-              </h2>
-              <p className="text-white/50 text-lg mb-8">
-                Sign in with Steam to unlock personalized features
-              </p>
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-white/40">
-                  <Shield className="h-4 w-4" />
-                  Secure Steam Auth
-                </div>
-                <div className="flex items-center gap-2 text-sm text-white/40">
-                  <Sparkles className="h-4 w-4" />
-                  Free to use
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
 
         <footer className="border-t border-white/10 py-8 px-4">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
