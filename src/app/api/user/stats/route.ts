@@ -26,29 +26,51 @@ export async function GET(request: Request) {
     }
 
     const accountId = convertSteamIdToAccountId(steamId)
-    const detailPromises = historyItems.slice(0, 30).map(m => getMatchDetails(m.match_id))
-    const details = (await Promise.all(detailPromises)).filter(Boolean) as Awaited<ReturnType<typeof getMatchDetails>>[]
+    const matchIds = historyItems.map(m => m.match_id)
+
+    const detailResults = await Promise.allSettled(
+      matchIds.slice(0, 50).map(mid => getMatchDetails(mid)),
+    )
+
+    const matchMap = new Map<number, { player_slot: number; hero_id: number }>()
+    for (const m of historyItems) {
+      const p = m.players?.find(pl => pl.account_id === accountId)
+      if (p) matchMap.set(m.match_id, { player_slot: p.player_slot, hero_id: p.hero_id })
+    }
 
     let wins = 0, total = 0
     let currentRank = "Uncalibrated"
     const heroCounts: Record<number, { games: number; wins: number }> = {}
 
-    for (const match of details) {
-      if (!match) continue
-      const playerData = getTeamPlayers(match.players, accountId)
-      if (!playerData) continue
+    for (const result of detailResults) {
+      if (result.status !== "fulfilled" || !result.value) continue
+      const match = result.value
+      const info = matchMap.get(match.match_id)
+      if (!info) continue
       total++
-      const isRadiant = playerData.player_slot < 128
+      const isRadiant = info.player_slot < 128
       const won = isRadiant ? match.radiant_win : !match.radiant_win
       if (won) wins++
-      if (!heroCounts[playerData.hero_id]) heroCounts[playerData.hero_id] = { games: 0, wins: 0 }
-      heroCounts[playerData.hero_id].games++
-      if (won) heroCounts[playerData.hero_id].wins++
+      if (!heroCounts[info.hero_id]) heroCounts[info.hero_id] = { games: 0, wins: 0 }
+      heroCounts[info.hero_id].games++
+      if (won) heroCounts[info.hero_id].wins++
+
       if (!currentRank || currentRank === "Uncalibrated") {
-        if (playerData.rank_tier) {
+        const playerData = getTeamPlayers(match.players, accountId)
+        if (playerData?.rank_tier) {
           currentRank = formatRankTier(playerData.rank_tier).label
         }
       }
+    }
+
+    if (currentRank === "Uncalibrated") {
+      try {
+        const odRes = await fetch(`https://api.opendota.com/api/players/${accountId}`, { next: { revalidate: 3600 } })
+        if (odRes.ok) {
+          const odData = await odRes.json()
+          if (odData.rank_tier) currentRank = formatRankTier(odData.rank_tier).label
+        }
+      } catch {}
     }
 
     const heroEntries = Object.entries(heroCounts)
