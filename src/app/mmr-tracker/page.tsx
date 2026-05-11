@@ -35,7 +35,7 @@ export default function MMRTrackerPage() {
     if (status !== "authenticated") return
     setLoading(true)
     setError("")
-    fetch("/api/user/mmr-history")
+    fetch(`/api/user/mmr-history?steamId=${session?.user?.steamId}`)
       .then(r => r.ok ? r.json() : Promise.reject("Failed to load"))
       .then(setData)
       .catch(e => setError(String(e)))

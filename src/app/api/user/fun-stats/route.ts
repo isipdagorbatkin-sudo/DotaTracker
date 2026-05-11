@@ -2,9 +2,14 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { getMatchHistory, getMatchDetails, getTeamPlayers, convertSteamIdToAccountId } from "@/lib/steam-api"
 
-export async function GET() {
-  const session = await auth()
-  const steamId = session?.user?.steamId
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  let steamId = searchParams.get("steamId")
+
+  if (!steamId) {
+    const session = await auth()
+    steamId = session?.user?.steamId ?? null
+  }
 
   if (!steamId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })

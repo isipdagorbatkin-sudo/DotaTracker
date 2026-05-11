@@ -33,7 +33,7 @@ export default function ProfilePage() {
     if (status !== "authenticated") return
     setLoading(true)
     setError("")
-    fetch("/api/user/stats")
+    fetch(`/api/user/stats?steamId=${session?.user?.steamId}`)
       .then(r => r.ok ? r.json() : Promise.reject("Failed to load"))
       .then(setStats)
       .catch(e => setError(String(e)))

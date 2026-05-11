@@ -3,8 +3,13 @@ import { auth } from "@/lib/auth"
 import { getPlayerSummary, getMatchHistory, getMatchDetails, getTeamPlayers, formatRankTier, convertSteamIdToAccountId } from "@/lib/steam-api"
 
 export async function GET(request: Request) {
-  const session = await auth()
-  const steamId = session?.user?.steamId
+  const { searchParams } = new URL(request.url)
+  let steamId = searchParams.get("steamId")
+
+  if (!steamId) {
+    const session = await auth()
+    steamId = session?.user?.steamId ?? null
+  }
 
   if (!steamId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
